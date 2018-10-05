@@ -1,0 +1,99 @@
+Update the image with the new library version for mplotlib in 2.7 and 3.5
+
+# docker images | grep jupy
+registry.ibm.local/zen/jupyter-d8a3rls2x-shell                 v1.0.283-x86_64             ae85e1a512f5        3 weeks ago         8.01GB
+registry.ibm.local/zen/jupyter-d8a2rls2x-shell                 v1.0.277-x86_64             9f2afdf672da        3 weeks ago         7.55GB
+
+For Python 3.5
+
+[root@node01 ~]# docker run -it --rm --name jupyter3.7 --entrypoint=/bin/bash registry.ibm.local/zen/jupyter-d8a3rls2x-shell:v1.0.283-x86_64
+root@0b0ada12cd32:/# pip install --upgrade matplotlib
+
+# python
+Python 3.5.2 |Anaconda 4.2.0 (64-bit)| (default, Jul  2 2016, 17:53:06) 
+[GCC 4.4.7 20120313 (Red Hat 4.4.7-1)] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> matplotlib.__version__
+'3.0.0'
+
+While the container is still up and running.
+
+Open another window and commit the image
+
+# docker ps
+CONTAINER ID        IMAGE                                                            COMMAND             CREATED             STATUS              PORTS               NAMES
+0b0ada12cd32        registry.ibm.local/zen/jupyter-d8a3rls2x-shell:v1.0.283-x86_64   "/bin/bash"         4 minutes ago       Up 4 minutes        8888/tcp            jupyter2.7
+
+[root@node01 ~]# docker commit jupyter2.7 registry.ibm.local/zen/jupyter-d8a3rls2x-shell:v1.0.284-x86_64
+sha256:6d44a94d8f04e238ab6fc4c9801c9085d85d1c3e19e694e3c89bed9ec4d0e707
+
+
+Exit from the continer in the first window as we will retag this:
+
+# docker rmi registry.ibm.local/zen/jupyter-d8a3rls2x-shell:v1.0.283-x86_64
+
+# docker tag registry.ibm.local/zen/jupyter-d8a3rls2x-shell:v1.0.284-x86_64 registry.ibm.local/zen/jupyter-d8a3rls2x-shell:v1.0.283-x86_64
+
+# docker rmi registry.ibm.local/zen/jupyter-d8a3rls2x-shell:v1.0.284-x86_64
+
+Basically we removed the new tag and retained the old tag but updated the image - we do not have to change the helm chart with the new image.
+
+For Python 2.7
+
+# docker run -it --rm --name jupyter2.7  --entrypoint=/bin/bash registry.ibm.local/zen/jupyter-d8a2rls2x-shell:v1.0.277-x86_64
+# pip install --upgrade matplotlib
+# python
+Python 2.7.13 |Anaconda custom (64-bit)| (default, Dec 20 2016, 23:09:15) 
+[GCC 4.4.7 20120313 (Red Hat 4.4.7-1)] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+Anaconda is brought to you by Continuum Analytics.
+Please check out: http://continuum.io/thanks and https://anaconda.org
+>>> import matplotlib
+>>> matplotlib.__version__
+'2.2.3'
+
+
+# docker commit jupyter2.7 registry.ibm.local/zen/jupyter-d8a2rls2x-shell:v1.0.278-x86_64
+# docker rmi registry.ibm.local/zen/jupyter-d8a2rls2x-shell:v1.0.277-x86_64
+# docker tag registry.ibm.local/zen/jupyter-d8a2rls2x-shell:v1.0.278-x86_64 registry.ibm.local/zen/jupyter-d8a2rls2x-shell:v1.0.277-x86_64
+# docker rmi registry.ibm.local/zen/jupyter-d8a2rls2x-shell:v1.0.278-x86_64
+
+Update the registry
+
+Since both images were pushed to the registry - we just need to push it again with updated.
+
+Login to registry
+
+# docker login registry.ibm.local -u user -p password
+
+# docker push registry.ibm.local/zen/jupyter-d8a2rls2x-shell:v1.0.277-x86_64
+The push refers to repository [registry.ibm.local/zen/jupyter-d8a2rls2x-shell]
+2e95651113d8: Pushed 
+b0cc4673e2e3: Layer already exists 
+v1.0.277-x86_64: digest: sha256:e74af16d6dccc1dcc0873224411f3f9c7f5f2632f58f3113af988c03cf2af06f size: 743
+
+# docker push registry.ibm.local/zen/jupyter-d8a3rls2x-shell:v1.0.283-x86_64
+The push refers to repository [registry.ibm.local/zen/jupyter-d8a3rls2x-shell]
+8bd2d8669547: Pushed 
+a6c7e1a4f431: Layer already exists 
+v1.0.283-x86_64: digest: sha256:cb1652b80cda5e7c8ccdd74f76be36ea967216c942b983b1feb53d4449efb20e size: 743
+
+List Registry
+
+# curl -k -X GET https://user:password@registry.ibm.local/v2/_catalog?n=2000 | python -m json.tool | grep jupy
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100  5283    0  5283    0     0  37474      0 --:--:-- --:--:-- --:--:-- 37735
+        "zen/jupyter-d8a2rls2x-shell",
+        "zen/jupyter-d8a3rls2x-shell",
+        "zen/jupyter-gpu-py35",
+
+Then use the URL to find the tags.
+
+[root@node01 docker]# curl -k -X GET https://user:password@registry.ibm.local/v2/zen/jupyter-d8a2rls2x-shell/tags/list
+{"name":"zen/jupyter-d8a2rls2x-shell","tags":["v1.0.277-x86_64"]}
+
+[root@node01 docker]# curl -k -X GET https://user:password@registry.ibm.local/v2/zen/jupyter-d8a2rls2x-shell/tags/list
+{"name":"zen/jupyter-d8a2rls2x-shell","tags":["v1.0.277-x86_64"]}
+
+
